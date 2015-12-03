@@ -1,0 +1,96 @@
+Cable	
+	-plug1														
+	-plug2
+	+connectTo(jack)
+	+disconnectFrom(jack)
+	+isConnectedTo(jack)
+	+free()
+	-other(plug)
+	-getFreePlug()
+	-isValid(plug)
+	-free(plug)
+	
+Cable.Plug
+	-cable
+	-jack
+	+connect(jack)
+	+disconnect()
+	+isConnectedTo(jack)
+	+send(Frame)
+	+receive(Frame)
+	+isFree()
+
+Computer
+	-networkCard
+	-networkProtocol
+	+getIpAddress
+	+setIpAddress(ip)
+	+connectTo(cable)
+	+disconnectFrom(cable)
+	+send(destinationIpAddress, payload)
+	-receive(payload)
+
+NetworkProtocol
+	-networkCard
+	-ipAddress
+	-payloadConsumer
+	-arpTable
+	+getIpAddress
+	+setIpAddress(ip)
+	+send(destinationIpAdress, payload)
+	-receive(frame)
+
+	-sendArpRequest(destinationIpAddress)
+	-buildArpRequest(destinationIpAddress)
+	-receiveArpFrame(frame)
+	-receiveArpRequest(frame)
+	-getIpAsString(payload)
+	-buildArpReply()
+	-setIp(ip, payload)
+	-receiveArpReply(frame)
+
+EtherType
+	ARP, IPV4
+
+Frame
+	-etherType
+	-sourceMacAddress
+	-destinationMacAddress
+	-payload
+	+getSourceMacAddress
+	+getDestinationMacAddress
+	+getPayload
+	
+Hub
+	-jacks
+	+connnectTo(cable)
+	-disconnectFrom(cable)
+	#receive(index, frame)
+	-getFreeJack()
+	
+Jack
+	-frameConsumer
+	-plug
+	+connnect(plug)
+	+disconnnect()
+	+isFree()
+	+send(frame)
+	+receive(frame)
+
+NetworkCard
+	-macAddressSequence --static
+	-macAddress
+	-jack
+	-frameConsumer
+	+setFrameConsumer(frameConsumer)
+	+connectTo(cable)
+	+disconnectFrom(cable)
+	+sendIpv4Frame(destinationMacAddress, payload)
+	+sendArpFrame(destinationMacAddress, payload) 
+	-receive(frame)
+	-isBroadcast
+	-send(frame)
+	
+Switch -> Hub
+	-macAddressIdxMap
+	#receive(index, frame)
