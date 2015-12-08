@@ -44,7 +44,7 @@ public class Simulator {
 		connect(hubs[3], hubs[5]);
 		computers[0][0].setIpAddress("192.44.200.1", (byte) 24);
 		computers[1][0].setIpAddress("192.44.200.5", (byte) 24);
-		LOGGER.info("................Sending Hello.....................");
+		LOGGER.info("Sending Hello...");
 		computers[0][0].send(computers[1][0].getIpAddress(), "Hello".getBytes());
 	}
 
@@ -80,6 +80,7 @@ public class Simulator {
 		switch2Computers[1].setDefaultGateway("192.50.201.1");
 		switch2Computers[2].setDefaultGateway("192.50.201.1");
 
+		LOGGER.info("Sending Other network message...");
 		switch1Computers[0].send("192.50.201.3", "other network message".getBytes());
 	}
 

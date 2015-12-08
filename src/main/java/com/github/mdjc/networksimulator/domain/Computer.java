@@ -43,6 +43,6 @@ public class Computer {
 	}
 
 	private void receive(byte[] payload) {
-		LOGGER.info("Receiving from sourceIp: {}, payload: {} ", getIpAddress(), Arrays.toString(payload));
+		LOGGER.info("Receiving in {}, payload: {} ", getIpAddress(), Arrays.toString(payload));
 	}
 }

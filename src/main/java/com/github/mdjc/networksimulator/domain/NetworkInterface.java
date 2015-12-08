@@ -13,9 +13,9 @@ import com.github.mdjc.networksimulator.common.IpUtils;
 
 public class NetworkInterface {
 	public static final byte IP_ADDRESSS_BYTE_COUNT = 4;
-	public static final int IP_PACKET_SOURCE_IP_POSITION = 0;
-	public static final int IP_PACKET_DESTINATION_IP_POSITION = IP_PACKET_SOURCE_IP_POSITION + IP_ADDRESSS_BYTE_COUNT;
-	public static final int IP_PACKET_PAYLOAD_POSITION = IP_PACKET_DESTINATION_IP_POSITION * 2;
+	public static final int IP_PACKET_SRC_IP_POSITION = 0;
+	public static final int IP_PACKET_DEST_IP_POSITION = IP_PACKET_SRC_IP_POSITION + IP_ADDRESSS_BYTE_COUNT;
+	public static final int IP_PACKET_PAYLOAD_POSITION = IP_PACKET_DEST_IP_POSITION * 2;
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(NetworkInterface.class);
 	private static final byte ARP_REQUEST = 1;
@@ -27,10 +27,10 @@ public class NetworkInterface {
 
 	private final NetworkCard networkCard;
 	private Consumer<byte[]> payloadConsumer;
-	private final Map<String, Long> arpTable;
-	private String ipAddress;
+	private final Map<Integer, Long> arpTable;
+	private int ipAddress;
 	private byte slashNetMask;
-	private String defaultGateway;
+	private int defaultGateway;
 
 	public NetworkInterface(Consumer<byte[]> payloadConsumer) {
 		networkCard = new NetworkCard();
@@ -40,22 +40,21 @@ public class NetworkInterface {
 	}
 
 	public String getIpAddress() {
-		return ipAddress;
+		return IpUtils.convertToString(ipAddress);
 	}
 
 	public void setIpAddress(String ipAddress, byte slashNetMask) {
 		Args.validate(isValidMask(slashNetMask));
-
 		this.slashNetMask = slashNetMask;
-		this.ipAddress = ipAddress;
+		this.ipAddress = IpUtils.convertToInt(ipAddress);
 	}
 
 	public String getDefaultGateway() {
-		return defaultGateway;
+		return IpUtils.convertToString(defaultGateway);
 	}
 
 	public void setDefaultGateway(String ipAddress) {
-		this.defaultGateway = ipAddress;
+		this.defaultGateway = IpUtils.convertToInt(ipAddress);
 	}
 
 	public boolean isConnectedTo(Cable cable) {
@@ -77,18 +76,20 @@ public class NetworkInterface {
 	}
 
 	public void send(String destinationIpAddress, byte[] payload) {
+		LOGGER.info("Sending from: {} to: {}", IpUtils.convertToString(ipAddress), destinationIpAddress);
 		Args.validateNull(destinationIpAddress, payload);
+		int destinationIp = IpUtils.convertToInt(destinationIpAddress);
 
-		if (destinationIpAddress.equals(this.ipAddress)) {
+		if (destinationIp == ipAddress) {
 			return;
 		}
 
-		if (isOnSameNetwork(destinationIpAddress)) {
-			networkCard.sendIpv4Frame(getDestinationMacAddress(destinationIpAddress), payload);
+		if (isOnSameNetwork(destinationIp)) {
+			networkCard.sendIpv4Frame(getDestinationMacAddress(destinationIp), payload);
 			return;
 		}
 
-		if (defaultGateway == null) {
+		if (defaultGateway == 0) {
 			LOGGER.info("unknown default gateway");
 			return;
 		}
@@ -102,13 +103,13 @@ public class NetworkInterface {
 				|| slashNetMask > NetworkAddress.MAX_NETWORK_MASK_VALUE;
 	}
 
-	private boolean isOnSameNetwork(String destinationIpAddress) {
-		int destinationNetwork = IpUtils.getNetworkIpAddress(destinationIpAddress, slashNetMask);
-		int sourceNetwork = IpUtils.getNetworkIpAddress(ipAddress, slashNetMask);
-		return sourceNetwork == destinationNetwork;
+	private boolean isOnSameNetwork(int destinationIpAddress) {
+		NetworkAddress destinationNetwAddress = IpUtils.getNetworkAddress(destinationIpAddress, slashNetMask);
+		NetworkAddress sourceNetwAddress = IpUtils.getNetworkAddress(ipAddress, slashNetMask);
+		return destinationNetwAddress.equals(sourceNetwAddress);
 	}
 
-	private Long getDestinationMacAddress(String destinationIpAddress) {
+	private Long getDestinationMacAddress(int destinationIpAddress) {
 		Long destinationMacAddress = arpTable.get(destinationIpAddress);
 
 		if (destinationMacAddress == null) {
@@ -120,16 +121,10 @@ public class NetworkInterface {
 		return destinationMacAddress;
 	}
 
-	private byte[] buildArpRequest(String destinationIpAddress) {
+	private byte[] buildArpRequest(int destinationIpAddress) {
 		byte[] payload = new byte[ARP_PACKET_LENGTH];
 		payload[ARP_PACKET_TYPE_POSITION] = ARP_REQUEST;
-
-		String[] tokens = destinationIpAddress.split("\\.");
-
-		for (int i = 1, index = 0; i <= IP_ADDRESSS_BYTE_COUNT; i++, index++) {
-			payload[i] = Integer.valueOf(tokens[index]).byteValue();
-		}
-
+		IpUtils.setIp(destinationIpAddress, payload, ARP_PACKET_IP_POSITION);
 		return payload;
 	}
 
@@ -137,8 +132,8 @@ public class NetworkInterface {
 		LOGGER.info("Building ip payload [from: {}, to: {}, payload{}]", ipAddress, destinationIpAddress, payload);
 		int frameLenth = IP_ADDRESSS_BYTE_COUNT * 2 + payload.length;
 		byte ipPayload[] = new byte[frameLenth];
-		IpUtils.setIp(ipAddress, ipPayload, IP_PACKET_SOURCE_IP_POSITION);
-		IpUtils.setIp(destinationIpAddress, ipPayload, IP_PACKET_DESTINATION_IP_POSITION);
+		IpUtils.setIp(ipAddress, ipPayload, IP_PACKET_SRC_IP_POSITION);
+		IpUtils.setIp(destinationIpAddress, ipPayload, IP_PACKET_DEST_IP_POSITION);
 		System.arraycopy(payload, 0, ipPayload, IP_PACKET_PAYLOAD_POSITION, payload.length);
 		return ipPayload;
 	}
@@ -168,13 +163,13 @@ public class NetworkInterface {
 	}
 
 	private void receiveArpRequest(Frame frame) {
-		if (ipAddress == null) {
+		if (ipAddress == 0) {
 			return;
 		}
 
-		String requestedIp = IpUtils.getIpAsString(frame.getPayload(), ARP_PACKET_IP_POSITION);
+		String requestedIp = IpUtils.getIp(frame.getPayload(), ARP_PACKET_IP_POSITION);
 
-		if (!ipAddress.equals(requestedIp)) {
+		if (ipAddress != IpUtils.convertToInt(requestedIp)) {
 			return;
 		}
 
@@ -192,7 +187,7 @@ public class NetworkInterface {
 	private void receiveArpReply(Frame frame) {
 		LOGGER.info("processing ARP reply");
 		byte[] payload = frame.getPayload();
-		String ip = IpUtils.getIpAsString(payload, ARP_PACKET_IP_POSITION);
-		arpTable.put(ip, frame.getSourceMacAddress());
+		String ip = IpUtils.getIp(payload, ARP_PACKET_IP_POSITION);
+		arpTable.put(IpUtils.convertToInt(ip), frame.getSourceMacAddress());
 	}
 }

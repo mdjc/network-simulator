@@ -23,7 +23,6 @@ public class Router {
 		for (int i = 0; i < interfaceCount; i++) {
 			interfaces[i] = new NetworkInterface(this::receive);
 		}
-
 	}
 
 	public void setIpAddress(String ipAddress, byte mask, byte interfaceIndex) {
@@ -85,8 +84,8 @@ public class Router {
 
 	private void receive(byte[] payload) {
 		LOGGER.info("Received payload [{}] ", payload);
-		String destinationIpAddress = IpUtils.getIpAsString(payload,
-				NetworkInterface.IP_PACKET_DESTINATION_IP_POSITION);
+		String destinationIpAddress = IpUtils.getIp(payload,
+				NetworkInterface.IP_PACKET_DEST_IP_POSITION);
 		NetworkInterface senderInterface = getSenderInterface(destinationIpAddress);
 
 		if (senderInterface == null) {

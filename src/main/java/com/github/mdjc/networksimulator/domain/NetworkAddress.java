@@ -1,18 +1,24 @@
 package com.github.mdjc.networksimulator.domain;
 
+import com.github.mdjc.networksimulator.common.IpUtils;
+
 public class NetworkAddress implements Comparable<NetworkAddress> {
 	public static final int MIN_NETWORK_MASK_VALUE = 8;
 	public static final int MAX_NETWORK_MASK_VALUE = 30;
 
-	private final String ipAddress;
+	private final int ipAddress;
 	private final byte slashMask;
 
-	public NetworkAddress(String ipAddress, byte slashMask) {
+	public NetworkAddress(int ipAddress, byte slashMask) {
 		this.ipAddress = ipAddress;
 		this.slashMask = slashMask;
 	}
 
-	public String getIpAddress() {
+	public NetworkAddress(String ipAddress, byte slashMask) {
+		this(IpUtils.convertToInt(ipAddress), slashMask);
+	}
+
+	public int getIpAddress() {
 		return ipAddress;
 	}
 
@@ -22,11 +28,13 @@ public class NetworkAddress implements Comparable<NetworkAddress> {
 
 	@Override
 	public int compareTo(NetworkAddress o) {
-		if (this.ipAddress.compareTo(o.ipAddress) == 0) {
+		int ipComparison = Integer.compare(this.ipAddress, o.ipAddress);
+
+		if (ipComparison == 0) {
 			return Byte.compare(this.slashMask, o.slashMask);
 		}
 
-		return this.ipAddress.compareTo(o.ipAddress);
+		return ipComparison;
 	}
 
 	@Override
@@ -46,7 +54,7 @@ public class NetworkAddress implements Comparable<NetworkAddress> {
 
 	@Override
 	public int hashCode() {
-		int ipAddressHash = ipAddress.hashCode();
+		int ipAddressHash = Integer.hashCode(ipAddress);
 		int slashMashHash = Byte.hashCode(slashMask);
 		return 31 * ipAddressHash + slashMashHash;
 	}
