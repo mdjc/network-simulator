@@ -8,8 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.mdjc.common.Args;
-import com.github.mdjc.common.Bytes;
 import com.github.mdjc.common.RuntimeExceptions;
+import com.github.mdjc.networksimulator.common.IpUtils;
 
 public class NetworkInterface {
 	public static final byte IP_ADDRESSS_BYTE_COUNT = 4;
@@ -103,8 +103,8 @@ public class NetworkInterface {
 	}
 
 	private boolean isOnSameNetwork(String destinationIpAddress) {
-		int destinationNetwork = getNetworkIpAddress(destinationIpAddress, slashNetMask);
-		int sourceNetwork = getNetworkIpAddress(ipAddress, slashNetMask);
+		int destinationNetwork = IpUtils.getNetworkIpAddress(destinationIpAddress, slashNetMask);
+		int sourceNetwork = IpUtils.getNetworkIpAddress(ipAddress, slashNetMask);
 		return sourceNetwork == destinationNetwork;
 	}
 
@@ -137,8 +137,8 @@ public class NetworkInterface {
 		LOGGER.info("Building ip payload [from: {}, to: {}, payload{}]", ipAddress, destinationIpAddress, payload);
 		int frameLenth = IP_ADDRESSS_BYTE_COUNT * 2 + payload.length;
 		byte ipPayload[] = new byte[frameLenth];
-		setIp(ipAddress, ipPayload, IP_PACKET_SOURCE_IP_POSITION);
-		setIp(destinationIpAddress, ipPayload, IP_PACKET_DESTINATION_IP_POSITION);
+		IpUtils.setIp(ipAddress, ipPayload, IP_PACKET_SOURCE_IP_POSITION);
+		IpUtils.setIp(destinationIpAddress, ipPayload, IP_PACKET_DESTINATION_IP_POSITION);
 		System.arraycopy(payload, 0, ipPayload, IP_PACKET_PAYLOAD_POSITION, payload.length);
 		return ipPayload;
 	}
@@ -172,7 +172,7 @@ public class NetworkInterface {
 			return;
 		}
 
-		String requestedIp = getIpAsString(frame.getPayload(), ARP_PACKET_IP_POSITION);
+		String requestedIp = IpUtils.getIpAsString(frame.getPayload(), ARP_PACKET_IP_POSITION);
 
 		if (!ipAddress.equals(requestedIp)) {
 			return;
@@ -185,71 +185,14 @@ public class NetworkInterface {
 	private byte[] buildArpReply() {
 		byte[] payload = new byte[ARP_PACKET_LENGTH];
 		payload[ARP_PACKET_TYPE_POSITION] = ARP_REPLY;
-		setIp(ipAddress, payload, ARP_PACKET_IP_POSITION);
+		IpUtils.setIp(ipAddress, payload, ARP_PACKET_IP_POSITION);
 		return payload;
 	}
 
 	private void receiveArpReply(Frame frame) {
 		LOGGER.info("processing ARP reply");
 		byte[] payload = frame.getPayload();
-		String ip = getIpAsString(payload, ARP_PACKET_IP_POSITION);
+		String ip = IpUtils.getIpAsString(payload, ARP_PACKET_IP_POSITION);
 		arpTable.put(ip, frame.getSourceMacAddress());
-	}
-
-	private static void setIp(String ip, byte[] payload, int indexFrom) {
-		String[] tokens = ip.split("\\.");
-		int length = indexFrom + IP_ADDRESSS_BYTE_COUNT;
-
-		for (int i = indexFrom, index = 0; i < length; i++, index++) {
-			payload[i] = Integer.valueOf(tokens[index]).byteValue();
-		}
-	}
-
-	private static int getNetworkIpAddress(String ip, byte slashMask) {
-		int ipInt = 0;
-		String[] tokens = ip.split("\\.");
-
-		for (int i = tokens.length - 1, octetPos = 0; i >= 0; i--, octetPos++) {
-			ipInt |= Integer.valueOf(tokens[i]).intValue() << octetPos * 8;
-		}
-
-		return ipInt & getMaskAsInt(slashMask);
-	}
-
-	private static int getMaskAsInt(byte slashMask) {
-		int bitsTotal = IP_ADDRESSS_BYTE_COUNT * 8;
-		return ((1 << slashMask) - 1) << (bitsTotal - slashMask);
-	}
-
-	public static String getIpAsString(byte[] payload, int indexFrom) {
-		Args.validateNull(payload);
-		StringBuilder sb = new StringBuilder();
-		int length = indexFrom + IP_ADDRESSS_BYTE_COUNT;
-
-		for (int i = indexFrom; i < length; i++) {
-			sb.append(Bytes.asInt(payload[i]));
-
-			if (i != length - 1) {
-				sb.append(".");
-			}
-		}
-
-		return sb.toString();
-	}
-
-	public static NetworkAddress getNetworkAddress(String destinationIpAddress, byte mask) {
-		int ntwAddresInt = getNetworkIpAddress(destinationIpAddress, mask);
-		StringBuilder ipBuilder = new StringBuilder();
-
-		for (int octetPos = IP_ADDRESSS_BYTE_COUNT - 1; octetPos >= 0; octetPos--) {
-			byte b = Bytes.getByte(ntwAddresInt, octetPos);
-			ipBuilder.append(Bytes.asInt(b));
-
-			if (octetPos != 0) {
-				ipBuilder.append(".");
-			}
-		}
-
-		return new NetworkAddress(ipBuilder.toString(), mask);
 	}
 }

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.mdjc.common.Args;
 import com.github.mdjc.common.RuntimeExceptions;
+import com.github.mdjc.networksimulator.common.IpUtils;
 
 public class Router {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Router.class);
@@ -71,7 +72,7 @@ public class Router {
 
 	private NetworkInterface getSenderInterface(String destinationIpAddress) {
 		for (byte mask = NetworkAddress.MIN_NETWORK_MASK_VALUE; mask < NetworkAddress.MAX_NETWORK_MASK_VALUE; mask++) {
-			NetworkAddress netwAddress = NetworkInterface.getNetworkAddress(destinationIpAddress, mask);
+			NetworkAddress netwAddress = IpUtils.getNetworkAddress(destinationIpAddress, mask);
 			Byte index = routingTable.get(netwAddress);
 
 			if (index != null) {
@@ -84,7 +85,7 @@ public class Router {
 
 	private void receive(byte[] payload) {
 		LOGGER.info("Received payload [{}] ", payload);
-		String destinationIpAddress = NetworkInterface.getIpAsString(payload,
+		String destinationIpAddress = IpUtils.getIpAsString(payload,
 				NetworkInterface.IP_PACKET_DESTINATION_IP_POSITION);
 		NetworkInterface senderInterface = getSenderInterface(destinationIpAddress);
 
