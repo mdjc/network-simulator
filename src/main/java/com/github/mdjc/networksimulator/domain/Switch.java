@@ -29,5 +29,4 @@ public class Switch extends Hub {
 		LOGGER.info("forwarding to memorized jack");
 		jacks[destinationIdx].send(frame);
 	}
-
 }

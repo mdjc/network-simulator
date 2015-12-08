@@ -5,6 +5,9 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.mdjc.common.Args;
+import com.github.mdjc.common.RuntimeExceptions;
+
 public class Hub {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Hub.class);
 
@@ -20,23 +23,13 @@ public class Hub {
 	}
 
 	public void connnectTo(Cable cable) {
-		if (cable == null) {
-			throw new IllegalArgumentException();
-		}
-
-		Jack freeJack = getFreeJack(jacks);
-
-		if (freeJack == null) {
-			throw new RuntimeException("unavailable jack");
-		}
-
-		cable.connectTo(freeJack);
+		Args.validateNull(cable);
+		RuntimeExceptions.throwWhen(getFreeJack(jacks) == null, "unavailable jack");
+		cable.connectTo(getFreeJack(jacks));
 	}
 
 	public void disconnectFrom(Cable cable) {
-		if (cable == null) {
-			throw new IllegalArgumentException();
-		}
+		Args.validateNull(cable);
 
 		for (Jack jack : jacks) {
 			if (cable.isConnectedTo(jack)) {
@@ -44,6 +37,14 @@ public class Hub {
 				break;
 			}
 		}
+
+		Jack connectedJack = Arrays.stream(jacks).filter(j -> cable.isConnectedTo(j)).findFirst().get();
+
+		if (connectedJack == null) {
+			return;
+		}
+
+		connectedJack.disconnect();
 	}
 
 	protected void receive(byte index, Frame frame) {

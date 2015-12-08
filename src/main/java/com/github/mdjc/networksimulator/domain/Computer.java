@@ -8,37 +8,38 @@ import org.slf4j.LoggerFactory;
 public class Computer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Computer.class);
 
-	private final NetworkCard networkCard;
-	private final NetworkProtocol networkProtocol;
+	private final NetworkInterface networkInterface;
 
 	public Computer() {
-		networkCard = new NetworkCard();
-		networkProtocol = new NetworkProtocol(networkCard, this::receive);
+		networkInterface = new NetworkInterface(this::receive);
 	}
 
 	public String getIpAddress() {
-		return networkProtocol.getIpAddress();
+		return networkInterface.getIpAddress();
 	}
 
-	public void setIpAddress(String ipAddress) {
-		networkProtocol.setIpAddress(ipAddress);
+	public void setIpAddress(String ipAddress, byte slashNetMask) {
+		networkInterface.setIpAddress(ipAddress, slashNetMask);
+	}
+
+	public String getDefaultGateway() {
+		return networkInterface.getDefaultGateway();
+	}
+
+	public void setDefaultGateway(String ipAddress) {
+		networkInterface.setDefaultGateway(ipAddress);
 	}
 
 	public void connectTo(Cable cable) {
-		networkCard.connectTo(cable);
+		networkInterface.connectTo(cable);
 	}
 
 	public void disconnectFrom(Cable cable) {
-		networkCard.disconnectFrom(cable);
+		networkInterface.disconnectFrom(cable);
 	}
 
 	public void send(String destinationIpAddress, byte[] payload) {
-		networkProtocol.send(destinationIpAddress, payload);
-	}
-
-	@Override
-	public String toString() {
-		return String.format("networkCard: %s", this.networkCard);
+		networkInterface.send(destinationIpAddress, payload);
 	}
 
 	private void receive(byte[] payload) {

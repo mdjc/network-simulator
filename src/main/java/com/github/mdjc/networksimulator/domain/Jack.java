@@ -2,6 +2,7 @@ package com.github.mdjc.networksimulator.domain;
 
 import java.util.function.Consumer;
 
+import com.github.mdjc.common.RuntimeExceptions;
 import com.github.mdjc.networksimulator.domain.Cable.Plug;
 
 public class Jack {
@@ -13,10 +14,7 @@ public class Jack {
 	}
 
 	public void connect(Plug plug) {
-		if (!isFree()) {
-			throw new RuntimeException("Jack not free");
-		}
-
+		RuntimeExceptions.throwWhen(!isFree(), "Jack not free");
 		this.plug = plug;
 	}
 

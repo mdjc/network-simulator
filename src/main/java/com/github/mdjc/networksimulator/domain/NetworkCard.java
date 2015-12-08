@@ -5,6 +5,9 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.mdjc.common.Args;
+import com.github.mdjc.common.RuntimeExceptions;
+
 public class NetworkCard {
 	public static final long BROADCAST_MACADDRESS = 0xFFFFFFFFFFFFl;
 
@@ -20,6 +23,14 @@ public class NetworkCard {
 		this.jack = new Jack(this::receive);
 	}
 
+	public void setFrameConsumer(Consumer<Frame> frameConsumer) {
+		this.frameConsumer = frameConsumer;
+	}
+
+	public boolean isConnectedTo(Cable cable) {
+		return cable.isConnectedTo(jack);
+	}
+
 	public void connectTo(Cable cable) {
 		cable.connectTo(jack);
 	}
@@ -28,25 +39,41 @@ public class NetworkCard {
 		cable.disconnectFrom(jack);
 	}
 
-	public void setFrameConsumer(Consumer<Frame> frameConsumer) {
-		this.frameConsumer = frameConsumer;
+	public boolean isFree() {
+		return this.jack.isFree();
 	}
 
 	public void sendIpv4Frame(long destinationMacAddress, byte[] payload) {
+		send(EtherType.IPV4, destinationMacAddress, payload);
+	}
+
+	public void sendArpFrame(long destinationMacAddress, byte[] payload) {
+		send(EtherType.ARP, destinationMacAddress, payload);
+	}
+
+	@Override
+	public String toString() {
+		return String.valueOf(this.macAddress);
+	}
+
+	private void send(EtherType etherType, long destinationMacAddress, byte[] payload) {
+		LOGGER.info("Sending frame [{}, {}, {}]", etherType, destinationMacAddress, payload);
+
 		if (destinationMacAddress == macAddress) {
 			return;
 		}
 
-		Frame frame = new Frame(EtherType.IPV4, this.macAddress, destinationMacAddress, payload);
-		send(frame);
+		Frame frame = new Frame(etherType, this.macAddress, destinationMacAddress, payload);
+		jack.send(frame);
 	}
 
-	public void sendArpFrame(long destinationMacAddress, byte[] payload) {
-		Frame frame = new Frame(EtherType.ARP, this.macAddress, destinationMacAddress, payload);
-		send(frame);
+	private boolean isBroadcast(long destinationMacAddress) {
+		return destinationMacAddress == BROADCAST_MACADDRESS;
 	}
 
 	private void receive(Frame frame) {
+		Args.validateNull(frame);
+
 		if (frame.getDestinationMacAddress() != macAddress
 				&& !isBroadcast(frame.getDestinationMacAddress())) {
 			LOGGER.info(
@@ -56,27 +83,10 @@ public class NetworkCard {
 			return;
 		}
 
-		if (frameConsumer == null) {
-			throw new RuntimeException("unknown consumer");
-		}
-
+		RuntimeExceptions.throwWhen(frameConsumer == null, "unknown consumer");
 		LOGGER.info(String.format("Receiving frame at macAddress: %s, frame is %s",
 				macAddress,
 				frame));
 		frameConsumer.accept(frame);
-	}
-
-	@Override
-	public String toString() {
-		return String.valueOf(this.macAddress);
-	}
-
-	private boolean isBroadcast(long destinationMacAddress) {
-		return destinationMacAddress == BROADCAST_MACADDRESS;
-	}
-
-	private void send(Frame frame) {
-		LOGGER.info("Sending frame {}", frame);
-		jack.send(frame);
 	}
 }

@@ -2,6 +2,8 @@ package com.github.mdjc.networksimulator.domain;
 
 import java.util.Arrays;
 
+import com.github.mdjc.common.Args;
+
 public class Frame {
 	private final EtherType etherType;
 	private final long sourceMacAddress;
@@ -9,6 +11,7 @@ public class Frame {
 	private final byte[] payload;
 
 	public Frame(EtherType etherType, long sourceMacAddress, long destinationMacAddress, byte[] payload) {
+		Args.validateNull(etherType, sourceMacAddress, destinationMacAddress, payload);
 		this.etherType = etherType;
 		this.sourceMacAddress = sourceMacAddress;
 		this.destinationMacAddress = destinationMacAddress;

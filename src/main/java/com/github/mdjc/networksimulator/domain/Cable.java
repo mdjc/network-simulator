@@ -1,16 +1,15 @@
 package com.github.mdjc.networksimulator.domain;
 
+import com.github.mdjc.common.Args;
+import com.github.mdjc.common.RuntimeExceptions;
+
 public class Cable {
 	public static class Plug {
 		private final Cable cable;
 		private Jack jack;
 
 		private Plug(Cable cable) {
-			// TODO: as this is a very common code, find or create util to throw iae in when null
-			if (cable == null) {
-				throw new IllegalArgumentException();
-			}
-
+			Args.validateNull(cable);
 			this.cable = cable;
 		}
 
@@ -19,10 +18,7 @@ public class Cable {
 				return;
 			}
 
-			if (!isFree()) {
-				throw new RuntimeException("Plug not free");
-			}
-
+			RuntimeExceptions.throwWhen(!isFree(), "Plug not free");
 			this.jack = jack;
 		}
 
@@ -63,26 +59,19 @@ public class Cable {
 		this.plug2 = new Plug(this);
 	}
 
+	public boolean isConnectedTo(Jack jack) {
+		return plug1.isConnectedTo(jack) || plug2.isConnectedTo(jack);
+	}
+
 	public void connectTo(Jack jack) {
-		if (jack == null) {
-			throw new IllegalArgumentException();
-		}
-
-		Plug freePlug = getFreePlug();
-
-		if (freePlug == null) {
-			throw new RuntimeException("cable not free");
-		}
-
-		jack.connect(freePlug);
-		freePlug.connect(jack);
+		Args.validateNull(jack);
+		RuntimeExceptions.throwWhen(getFreePlug() == null, "cable not free");
+		jack.connect(getFreePlug());
+		getFreePlug().connect(jack);
 	}
 
 	public void disconnectFrom(Jack jack) {
-		if (!isConnectedTo(jack)) {
-			throw new IllegalArgumentException();
-		}
-
+		Args.validate(!isConnectedTo(jack));
 		jack.disconnect();
 
 		if (plug1.isConnectedTo(jack)) {
@@ -93,19 +82,13 @@ public class Cable {
 		plug2.disconnect();
 	}
 
-	public boolean isConnectedTo(Jack jack) {
-		return plug1.isConnectedTo(jack) || plug2.isConnectedTo(jack);
-	}
-
 	public void free() {
 		free(plug1);
 		free(plug2);
 	}
 
 	private Plug other(Plug plug) {
-		if (!isValid(plug)) {
-			throw new IllegalArgumentException();
-		}
+		Args.validate(!isValid(plug));
 
 		if (plug2 == plug) {
 			return plug1;
